@@ -1,0 +1,5 @@
+name: flyconnectome-web
+channels:
+  - defaults
+dependencies:
+  - python=3.12

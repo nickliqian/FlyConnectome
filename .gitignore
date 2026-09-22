@@ -1,0 +1,8 @@
+.venv/
+.venv-l3/
+.conda-web/
+.conda-pkgs/
+__pycache__/
+*.pyc
+outputs/
+.DS_Store

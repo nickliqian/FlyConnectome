@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>果蝇 L2 · 连接组约束网络 × 可切换环境</title>
+<style>
+  html,body{margin:0;padding:0;background:#0d1117;color:#e6edf3;font:14px/1.6 -apple-system,"Hiragino Sans GB","PingFang SC","Microsoft YaHei",sans-serif;}
+  body{padding:18px 22px 40px;}
+  h1{font-size:21px;margin:0 0 4px;}
+  .sub{color:#9aa4b2;margin:0 0 14px;font-size:13px;max-width:1180px;}
+  .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+  .col{display:flex;flex-direction:column;gap:14px;}
+  .panel{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px 14px;}
+  .panel h2{font-size:14px;margin:0 0 8px;color:#c9d1d9;font-weight:600;}
+  .cap{color:#8b949e;font-size:12px;margin-top:6px;}
+  canvas{display:block;background:#0a0d12;border-radius:6px;}
+  .row{display:flex;align-items:center;gap:10px;margin:6px 0;}
+  .row label{width:88px;color:#9aa4b2;font-size:13px;flex:none;}
+  .row input[type=range]{flex:1;}
+  .row .val{width:44px;text-align:right;color:#e6edf3;font-variant-numeric:tabular-nums;}
+  button{background:#21262d;color:#e6edf3;border:1px solid #363b42;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;}
+  button:hover{background:#2a3138;}
+  button.on{background:#1f6feb;border-color:#1f6feb;}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .stat{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:5px 10px;}
+  .stat .k{color:#8b949e;font-size:11px;}
+  .stat .v{font-size:15px;font-variant-numeric:tabular-nums;}
+  .v.blue{color:#58a6ff;} .v.red{color:#ff7b72;} .v.green{color:#7ee787;} .v.purple{color:#d2a8ff;} .v.orange{color:#ffa657;}
+  .brow{display:flex;align-items:center;gap:8px;margin:3px 0;}
+  .brow .blab{width:74px;font-size:11px;color:#9aa4b2;flex:none;}
+  .brow .btrack{flex:1;height:8px;background:#0d1117;border-radius:4px;overflow:hidden;}
+  .brow .bfill{height:100%;width:0%;border-radius:4px;}
+  .brow .bval{width:44px;text-align:right;font-size:11px;color:#8b949e;font-variant-numeric:tabular-nums;}
+  #err{color:#ff7b72;white-space:pre-wrap;display:none;}
+</style>
+</head>
+<body>
+<h1>果蝇 L2 · 连接组约束网络 × 可切换环境（联想学习 / 觅食 / 视觉导航）</h1>
+<p class="sub">L2 的要点：网络不变、环境任意换。网络 = 嗅觉通路 ORN→PN/LN → 蘑菇体 KC→MBON（DAN 多巴胺驱动突触可塑性 = 联想学习）＋ 中央复合体 EPG 环形吸引子（内部航向表征）→ 转向/前进运动命令。接线骨架按 hemibrain / FlyWire 细胞类型图谱缩放，动力学为速率模型。三种环境共用同一套网络与参数。点击竞技场可 teleport 果蝇。</p>
+<pre id="err"></pre>
+
+<div class="wrap">
+  <div class="col">
+    <div class="panel">
+      <h2>环境 · 竞技场（可切换）</h2>
+      <canvas id="arena" width="560" height="430"></canvas>
+      <div class="cap" id="arenaCap">觅食场：橙圈=气味A源(伴糖奖励)，紫圈=气味B源(伴苦味惩罚)；淡线=轨迹。</div>
+    </div>
+    <div class="panel">
+      <h2>控制</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <label>环境场景</label>
+        <button id="scForage" class="on">觅食+奖惩</button>
+        <button id="scTmaze">T迷宫条件化</button>
+        <button id="scVisual">视觉导航</button>
+      </div>
+      <div class="row"><label>学习率 η</label><input type="range" id="eta" min="0" max="2" step="0.1" value="1"><span class="val" id="etaV">1.00</span></div>
+      <div class="row"><label>运动噪声</label><input type="range" id="noise" min="0" max="1" step="0.05" value="0.3"><span class="val" id="noiseV">0.30</span></div>
+      <div class="row"><label>仿真速度</label><input type="range" id="speed" min="1" max="30" step="1" value="6"><span class="val" id="speedV">6</span></div>
+      <div class="row"><button id="btnPause">暂停</button><button id="btnReset">重置</button></div>
+    </div>
+    <div class="panel">
+      <h2>读数</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">仿真时间(s)</div><div class="v" id="sT">0</div></div>
+        <div class="stat"><div class="k">真实航向 / 内部航向(°)</div><div class="v blue" id="sHead">0 / 0</div></div>
+        <div class="stat"><div class="k">航向表征误差(°)</div><div class="v purple" id="sErr">0</div></div>
+        <div class="stat"><div class="k">气味A 价值(MB读出)</div><div class="v green" id="sVA">0</div></div>
+        <div class="stat"><div class="k">气味B 价值(MB读出)</div><div class="v red" id="sVB">0</div></div>
+        <div class="stat"><div class="k">奖励 / 惩罚 次数</div><div class="v orange" id="sRW">0 / 0</div></div>
+        <div class="stat"><div class="k" id="sTrialK">试验数</div><div class="v" id="sTrial">0</div></div>
+        <div class="stat"><div class="k" id="sPerfK">性能指数 PI</div><div class="v blue" id="sPerf">-</div></div>
+        <div class="stat"><div class="k">阶段</div><div class="v" id="sPhase">-</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel">
+      <h2>中央复合体 · EPG 环形吸引子（内部航向）</h2>
+      <canvas id="cx" width="250" height="250"></canvas>
+      <div class="cap">16 楔形 = EPG 群体发放（亮=高）；白针=内部航向 ψ，绿针=目标方向。环形吸引子靠视觉罗盘锚定 + 运动副本自旋。</div>
+    </div>
+    <div class="panel" style="width:250px;">
+      <h2>模块发放率</h2>
+      <div id="bars"></div>
+    </div>
+    <div class="panel">
+      <h2>学习曲线</h2>
+      <canvas id="learn" width="560" height="210"></canvas>
+      <div class="cap" id="learnCap">觅食：气味A/B 的学习价值随时间变化（糖奖励抬升A、苦味压低B）。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.onerror=function(m,s,l,c){var e=document.getElementById('err');e.style.display='block';e.textContent+='[JS错误] '+m+' @'+l+':'+c+'\n';};
+
+// ================= 工具 =================
+function act(I,thr,gain,rmax){var x=(I-thr)*gain;return x<0?0:(x>rmax?rmax:x);}
+function rand(a,b){return a+Math.random()*(b-a);}
+function wrapPi(a){while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;}
+function angDiff(a,b){return wrapPi(a-b);}
+
+// ================= 网络（连接组约束骨架，缩放计数） =================
+var NKC=64, NEPG=16;
+var wKC_A=new Float64Array(NKC), wKC_B=new Float64Array(NKC);
+var maskA=new Uint8Array(NKC), maskB=new Uint8Array(NKC);
+var Wapp=new Float64Array(NKC), Wav=new Float64Array(NKC);
+var WAPP0=0.055, WAV0=0.035;                 // 先天价：略偏趋向
+var kc=new Float64Array(NKC), epg=new Float64Array(NEPG);
+var rOrnA=0,rOrnB=0,rPnA=0,rPnB=0,rLn=0,rMbApp=0,rMbAv=0,rDanPos=0,rDanNeg=0;
+var eta=1.0, noiseAmp=0.3;
+
+function initWeights(){
+  for(var k=0;k<NKC;k++){
+    wKC_A[k]=Math.random()<0.5?1.0:0.1;
+    wKC_B[k]=Math.random()<0.5?1.0:0.1;
+    maskA[k]=(wKC_A[k]>0.5&&wKC_B[k]<0.5)?1:0;
+    maskB[k]=(wKC_B[k]>0.5&&wKC_A[k]<0.5)?1:0;
+    Wapp[k]=WAPP0; Wav[k]=WAV0;
+  }
+}
+
+// ---- 中央复合体环形吸引子（Mexican-hat 卷积） ----
+var EPG_TH=new Array(NEPG), KERN=[6,4,1.5,-1,-2,-2,-2,-1,-1];
+for(var j0=0;j0<NEPG;j0++)EPG_TH[j0]=2*Math.PI*j0/NEPG;
+var psi=0, cohR=0;
+function popVec(){
+  var sx=0,sy=0,s=0;
+  for(var j=0;j<NEPG;j++){sx+=epg[j]*Math.cos(EPG_TH[j]);sy+=epg[j]*Math.sin(EPG_TH[j]);s+=epg[j];}
+  cohR=s>1e-6?Math.min(2,2*Math.sqrt(sx*sx+sy*sy)/s):0;
+  return Math.atan2(sy,sx);
+}
+function stepCX(dt,visAngle,visGain,omega){
+  var mean=0,j,d;
+  for(j=0;j<NEPG;j++)mean+=epg[j]; mean/=NEPG;
+  var I=new Float64Array(NEPG);
+  for(j=0;j<NEPG;j++){
+    var sum=0;
+    for(var k2=0;k2<NEPG;k2++){
+      d=Math.abs(j-k2); if(d>NEPG-d)d=NEPG-d;
+      sum+=KERN[d]*epg[k2];
+    }
+    I[j]=sum/16 - 1.0*mean + 4.0;
+    I[j]+=visGain*Math.cos(visAngle-EPG_TH[j]);
+  }
+  for(j=0;j<NEPG;j++) epg[j]+=dt/0.06*(-epg[j]+act(I[j],6,1.0,60));
+  if(omega){ // 运动副本：P-EN 联合输入的理想化 = bump 精确平移
+    var db=omega*dt/(2*Math.PI/NEPG), out=new Float64Array(NEPG);
+    for(j=0;j<NEPG;j++){
+      var srcp=j-db, j0=Math.floor(srcp), fr=srcp-j0;
+      var aa=epg[((j0%NEPG)+NEPG)%NEPG], bb=epg[(((j0+1)%NEPG)+NEPG)%NEPG];
+      out[j]=aa+(bb-aa)*fr;
+    }
+    for(j=0;j<NEPG;j++) epg[j]=out[j];
+  }
+  psi=popVec();
+}
+
+// ================= 环境 / 游戏 =================
+var AW=560, AH=430;
+var scenario='forage';
+var fly={x:0,y:0,h:0}, trail=[];
+var srcs=[], beacon={x:-999,y:-999}, goalR=26;
+var tmPhase='test', tmT=0, tmChoice=0, trialPI=[], trialDir=[];
+var rewards=0, punishments=0, pathLen=0, startPt={x:0,y:0};
+var histV={t:[],a:[],b:[]};
+var escapeT=0, escapeDir=1, coolA=0, coolB=0, danPosP=0, danNegP=0;
+var wanderAng=rand(0,6.28);
+var t=0, dt=0.01;
+
+function newBeacon(){ beacon.x=rand(AW*0.2,AW*0.8); beacon.y=rand(AH*0.18,AH*0.78); }
+function resetEnv(){
+  fly.x=AW*0.5; fly.y=AH*0.55; fly.h=rand(0,6.28);
+  trail.length=0; pathLen=0; startPt={x:fly.x,y:fly.y};
+  rewards=0; punishments=0; trialPI.length=0; trialDir.length=0;
+  histV.t.length=0;histV.a.length=0;histV.b.length=0;
+  danPosP=0;danNegP=0;escapeT=0;coolA=0;coolB=0;tmT=0;tmPhase='test';tmChoice=0;
+  wanderAng=rand(0,6.28);
+  if(scenario==='forage'){
+    srcs=[{o:'A',x:AW*0.76,y:AH*0.30,sugar:true},{o:'B',x:AW*0.24,y:AH*0.72,quin:true}];
+    beacon.x=-999;beacon.y=-999;
+  }else if(scenario==='visual'){
+    srcs=[]; newBeacon(); fly.x=AW*0.15;fly.y=AH*0.85;fly.h=rand(0,6.28);startPt={x:fly.x,y:fly.y};
+  }else{
+    srcs=[]; beacon.x=-999;beacon.y=-999; fly.x=AW*0.5;fly.y=AH*0.5;
+  }
+}
+
+function concField(o,x,y){
+  if(scenario==='forage'){
+    var c=0;
+    for(var i=0;i<srcs.length;i++){var s=srcs[i];if(s.o!==o)continue;
+      c+=0.8*Math.exp(-Math.hypot(x-s.x,y-s.y)/130);}
+    return c;
+  }
+  if(scenario==='tmaze'){
+    if(tmPhase==='train+') return o==='A'?1:0;
+    if(tmPhase==='train-') return o==='B'?1:0;
+    var u=Math.min(1,Math.max(0,x/AW));
+    return o==='A'?Math.min(1,1.25*(1-u)):Math.min(1,1.25*u);
+  }
+  return 0;
+}
+function gradField(o,x,y){
+  var e=6;
+  return {x:concField(o,x+e,y)-concField(o,x-e,y), y:concField(o,x,y+e)-concField(o,x,y-e)};
+}
+function odorValue(o){
+  var m=(o==='A')?maskA:maskB, num=0,den=0;
+  for(var k=0;k<NKC;k++){ if(!m[k])continue; num+=(Wapp[k]-Wav[k])*kc[k]; den+=kc[k]; }
+  return den>1e-6? num/den*50 : 0;
+}
+
+// ================= 主步进 =================
+function step(){
+  t+=dt;
+  var i,k;
+  // --- 环境事件 / 试验管理 ---
+  var danPosT=0;
+  if(scenario==='forage'){
+    coolA=Math.max(0,coolA-dt); coolB=Math.max(0,coolB-dt);
+    for(i=0;i<srcs.length;i++){var s=srcs[i];
+      if(Math.hypot(fly.x-s.x,fly.y-s.y)<28){
+        if(s.sugar&&coolA===0){coolA=2.5;danPosP=1.2;rewards++;}
+        if(s.quin&&coolB===0){coolB=2.5;danNegP=1.2;punishments++;escapeT=0.7;escapeDir=Math.random()<0.5?-1:1;}
+      }}
+  }else if(scenario==='tmaze'){
+    tmT+=dt;
+    if(tmPhase==='train+') danPosT=0.7;
+    if(tmPhase==='test'&&tmChoice===0){ if(fly.x<AW*0.35)tmChoice=1; else if(fly.x>AW*0.65)tmChoice=-1; }
+    var dur=(tmPhase==='test')?10:8;
+    if(tmT>dur){
+      if(tmPhase==='test') trialPI.push(tmChoice);
+      tmPhase=(tmPhase==='test')?'train+':(tmPhase==='train+')?'train-':'test';
+      tmT=0;tmChoice=0; fly.x=AW*0.5;fly.y=AH*0.5;fly.h=rand(0,6.28); trail.length=0;
+    }
+  }else{
+    if(Math.hypot(fly.x-beacon.x,fly.y-beacon.y)<goalR){
+      trialDir.push(Math.min(1,Math.hypot(startPt.x-beacon.x,startPt.y-beacon.y)/Math.max(1,pathLen)));
+      fly.x=rand(40,AW-40);fly.y=rand(40,AH-40);fly.h=rand(0,6.28);
+      startPt={x:fly.x,y:fly.y};pathLen=0;trail.length=0;newBeacon();
+    }
+  }
+  danPosP=Math.max(0,danPosP-dt/1.4); danNegP=Math.max(0,danNegP-dt/1.0);
+  rDanPos=Math.max(danPosP,danPosT); rDanNeg=danNegP;
+
+  // --- 嗅觉通路 ORN→PN/LN→KC ---
+  var cA=concField('A',fly.x,fly.y), cB=concField('B',fly.x,fly.y);
+  function hill(c){var cp=Math.pow(c,1.5),kp=Math.pow(0.25,1.5);return 70*cp/(cp+kp);}
+  rOrnA=hill(cA)+2; rOrnB=hill(cB)+2;
+  rLn=act((rPnA+rPnB)*0.9,4,0.8,120);
+  rPnA+=dt/0.06*(-rPnA+act(rOrnA*1.15-0.25*rLn,6,1.1,110));
+  rPnB+=dt/0.06*(-rPnB+act(rOrnB*1.15-0.25*rLn,6,1.1,110));
+  for(k=0;k<NKC;k++) kc[k]+=dt/0.05*(-kc[k]+act(wKC_A[k]*rPnA+wKC_B[k]*rPnB,26,0.9,70));
+
+  // --- 蘑菇体读出 + DAN 可塑性（联想学习：惩罚压低趋向突触、奖励压低回避突触） ---
+  rMbApp=0;rMbAv=0;
+  for(k=0;k<NKC;k++){
+    Wapp[k]=Math.max(0,Wapp[k]-rDanNeg*kc[k]*dt*0.0007*eta);
+    Wav[k]=Math.max(0,Wav[k]-rDanPos*kc[k]*dt*0.0007*eta);
+    rMbApp+=Wapp[k]*kc[k]; rMbAv+=Wav[k]*kc[k];
+  }
+  rMbApp*=0.35; rMbAv*=0.35;
+
+  // --- 多线索目标矢量 ---
+  var gx=0,gy=0;
+  if(scenario!=='visual'){
+    var ods=['A','B'];
+    for(i=0;i<2;i++){
+      var o=ods[i], v=odorValue(o), g=gradField(o,fly.x,fly.y), gm=Math.hypot(g.x,g.y);
+      if(gm>1e-4){ gx+=g.x/gm*v*14; gy+=g.y/gm*v*14; }   // v<0 自动反向=回避
+    }
+  }else{
+    var bd=Math.hypot(beacon.x-fly.x,beacon.y-fly.y);
+    if(bd>1){ gx+=(beacon.x-fly.x)/bd*55; gy+=(beacon.y-fly.y)/bd*55; }
+  }
+  var mg=42;
+  if(fly.x<mg)gx+=(mg-fly.x)*1.2; if(fly.x>AW-mg)gx-=(fly.x-(AW-mg))*1.2;
+  if(fly.y<mg)gy+=(mg-fly.y)*1.2; if(fly.y>AH-mg)gy-=(fly.y-(AH-mg))*1.2;
+  if(scenario==='tmaze') gy*=0.15;
+  if(Math.hypot(gx,gy)<6){ wanderAng+=rand(-0.25,0.25); gx+=Math.cos(wanderAng)*14; gy+=Math.sin(wanderAng)*14; }
+
+  // --- 中央复合体：内部航向（视觉锚定 + 运动副本） ---
+  var visN=fly.h+(Math.random()-0.5)*0.12;
+  var goalAng=Math.atan2(gy,gx);
+  lastGoalAng=goalAng;
+  var omega=1.9*Math.sin(angDiff(goalAng,psi));
+  if(escapeT>0){escapeT-=dt; omega+=escapeDir*5.0;}
+  omega+=(Math.random()-0.5)*2*noiseAmp*2.2;
+  stepCX(dt, visN, 6.0, omega);
+
+  // --- 运动输出 ---
+  var v=52;
+  if(rDanPos>0.35) v*=0.22;
+  if(escapeT>0) v*=1.35;
+  var px=fly.x, py=fly.y;
+  fly.h=wrapPi(fly.h+omega*dt);
+  fly.x=Math.max(8,Math.min(AW-8,fly.x+v*Math.cos(fly.h)*dt));
+  fly.y=Math.max(8,Math.min(AH-8,(scenario==='tmaze')? AH*0.5+Math.sin(t*2.1)*10 : fly.y+v*Math.sin(fly.h)*dt));
+  pathLen+=Math.hypot(fly.x-px,fly.y-py);
+
+  trail.push(fly.x,fly.y); if(trail.length>2400)trail.splice(0,2);
+  if(Math.round(t*2)!==Math.round((t-dt)*2)){
+    histV.t.push(t);histV.a.push(odorValue('A'));histV.b.push(odorValue('B'));
+    if(histV.t.length>600){histV.t.shift();histV.a.shift();histV.b.shift();}
+  }
+}
+
+// ================= 绘图 =================
+var aCv=document.getElementById('arena'), aCtx=aCv.getContext('2d');
+var cCv=document.getElementById('cx'), cCtx=cCv.getContext('2d');
+var lCv=document.getElementById('learn'), lCtx=lCv.getContext('2d');
+
+function drawArena(){
+  var g=aCtx; g.clearRect(0,0,AW,AH);
+  if(scenario==='forage'){
+    for(var i=0;i<srcs.length;i++){var s=srcs[i];
+      var rg=g.createRadialGradient(s.x,s.y,4,s.x,s.y,180);
+      rg.addColorStop(0,s.sugar?'rgba(255,166,87,0.55)':'rgba(210,168,255,0.5)');
+      rg.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=rg; g.fillRect(0,0,AW,AH);
+      g.strokeStyle=s.sugar?'#7ee787':'#ff7b72'; g.lineWidth=1.5;
+      g.beginPath(); g.arc(s.x,s.y,28,0,7); g.stroke();
+      g.fillStyle=s.sugar?'#7ee787':'#ff7b72'; g.font='11px sans-serif';
+      g.fillText(s.sugar?'A+糖':'B+苦', s.x+32,s.y+4);
+    }
+  }else if(scenario==='tmaze'){
+    var lg=g.createLinearGradient(0,0,AW,0);
+    lg.addColorStop(0,'rgba(255,166,87,0.30)'); lg.addColorStop(0.5,'rgba(0,0,0,0)'); lg.addColorStop(1,'rgba(126,231,135,0.25)');
+    g.fillStyle=lg; g.fillRect(0,AH*0.5-46,AW,92);
+    g.strokeStyle='#30363d'; g.strokeRect(0,AH*0.5-46,AW,92);
+    g.fillStyle='#ffa657'; g.font='12px sans-serif'; g.fillText('气味A 臂',8,AH*0.5-52);
+    g.fillStyle='#7ee787'; g.fillText('气味B 臂',AW-64,AH*0.5-52);
+    g.fillStyle='#8b949e'; g.fillText('阶段: '+tmPhase,AW*0.42,AH*0.5-52);
+  }else{
+    g.strokeStyle='#58a6ff'; g.lineWidth=1.5;
+    g.beginPath(); g.arc(beacon.x,beacon.y,goalR,0,7); g.stroke();
+    g.fillStyle='#58a6ff';
+    for(var b=0;b<4;b++){ g.beginPath(); g.arc(beacon.x,beacon.y,6+b*5,0,7); g.lineWidth=2; g.strokeStyle=b%2?'#0a0d12':'#58a6ff'; g.stroke(); }
+    g.fillStyle='#8b949e'; g.font='11px sans-serif'; g.fillText('视觉信标=目标', beacon.x+30,beacon.y+4);
+  }
+  if(trail.length>3){
+    g.strokeStyle='rgba(139,148,158,0.45)'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(trail[0],trail[1]);
+    for(i=2;i<trail.length;i+=2) g.lineTo(trail[i],trail[i+1]);
+    g.stroke();
+  }
+  g.fillStyle='#e6edf3'; g.beginPath(); g.arc(fly.x,fly.y,5,0,7); g.fill();
+  g.strokeStyle='#e6edf3'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(fly.x,fly.y); g.lineTo(fly.x+12*Math.cos(fly.h),fly.y+12*Math.sin(fly.h)); g.stroke();
+  g.fillStyle='#8b949e'; g.font='11px sans-serif'; g.fillText('果蝇',fly.x+8,fly.y-8);
+}
+
+function drawCX(){
+  var g=cCtx, cx=125, cy=125, R=95;
+  g.clearRect(0,0,250,250);
+  var mx=1; for(var j=0;j<NEPG;j++) mx=Math.max(mx,epg[j]);
+  for(j=0;j<NEPG;j++){
+    var a0=EPG_TH[j]-Math.PI/NEPG, a1=EPG_TH[j]+Math.PI/NEPG;
+    var lv=epg[j]/mx;
+    g.fillStyle='rgb('+Math.round(30+225*lv)+','+Math.round(60+160*lv)+',255)';
+    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,R,a0,a1); g.closePath(); g.fill();
+  }
+  g.strokeStyle='#0d1117'; g.lineWidth=2;
+  g.beginPath(); g.arc(cx,cy,R,0,7); g.stroke();
+  function needle(ang,col,len){
+    g.strokeStyle=col; g.lineWidth=3;
+    g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+len*Math.cos(ang),cy+len*Math.sin(ang)); g.stroke();
+  }
+  needle(psi,'#ffffff',R-8);
+  var gAng=lastGoalAng; needle(gAng,'#7ee787',R-30);
+  g.fillStyle='#8b949e'; g.font='11px sans-serif';
+  g.fillText('ψ='+Math.round(psi*180/Math.PI)+'°  相干='+cohR.toFixed(2), 8, 244);
+}
+var lastGoalAng=0;
+
+var BARDEF=[['ORN_A','#ffa657',function(){return rOrnA;},80],['ORN_B','#d2a8ff',function(){return rOrnB;},80],
+ ['PN','#58a6ff',function(){return (rPnA+rPnB)/2;},110],['KC Σ/8','#d2a8ff',function(){var s=0;for(var k=0;k<NKC;k++)s+=kc[k];return s/8;},80],
+ ['MBON趋','#7ee787',function(){return rMbApp;},60],['MBON避','#ff7b72',function(){return rMbAv;},60],
+ ['DAN糖','#7ee787',function(){return rDanPos*50;},60],['DAN罚','#ff7b72',function(){return rDanNeg*50;},60],
+ ['CX相干','#58a6ff',function(){return cohR*40;},80]];
+(function(){
+  var html='';
+  for(var i=0;i<BARDEF.length;i++)
+    html+='<div class="brow"><span class="blab">'+BARDEF[i][0]+'</span><div class="btrack"><div class="bfill" id="bf'+i+'" style="background:'+BARDEF[i][1]+'"></div></div><span class="bval" id="bv'+i+'">0</span></div>';
+  document.getElementById('bars').innerHTML=html;
+})();
+function drawBars(){
+  for(var i=0;i<BARDEF.length;i++){
+    var v=BARDEF[i][2](), mx=BARDEF[i][3];
+    document.getElementById('bf'+i).style.width=Math.min(100,v/mx*100)+'%';
+    document.getElementById('bv'+i).textContent=Math.round(v);
+  }
+}
+
+function drawLearn(){
+  var g=lCtx,W=560,H=210; g.clearRect(0,0,W,H);
+  g.strokeStyle='#21262d'; g.lineWidth=1;
+  g.font='11px sans-serif';
+  if(scenario==='forage'){
+    var yMin=-3,yMax=6;
+    function y1(v){return H-24-(v-yMin)/(yMax-yMin)*(H-40);}
+    g.strokeStyle='#30363d'; g.beginPath(); g.moveTo(40,y1(0)); g.lineTo(W-8,y1(0)); g.stroke();
+    g.fillStyle='#8b949e'; g.fillText('0',26,y1(0)+4); g.fillText('价值',8,16);
+    var ser=[[histV.a,'#7ee787'],[histV.b,'#ff7b72']];
+    for(var s2=0;s2<2;s2++){
+      var arr=ser[s2][0]; if(arr.length<2)continue;
+      g.strokeStyle=ser[s2][1]; g.lineWidth=2; g.beginPath();
+      for(var i=0;i<arr.length;i++){
+        var x=40+i/600*(W-48), y=y1(Math.max(yMin,Math.min(yMax,arr[i])));
+        i?g.lineTo(x,y):g.moveTo(x,y);
+      }
+      g.stroke();
+    }
+    g.fillStyle='#7ee787'; g.fillText('A 价值',W-110,16);
+    g.fillStyle='#ff7b72'; g.fillText('B 价值',W-56,16);
+  }else{
+    var pts=(scenario==='tmaze')?trialPI:trialDir;
+    var y0=(scenario==='tmaze')?-1:0, y1b=(scenario==='tmaze')?1:1;
+    function y2(v){return H-24-(v-y0)/(y1b-y0)*(H-40);}
+    g.strokeStyle='#30363d'; g.beginPath(); g.moveTo(40,y2(0)); g.lineTo(W-8,y2(0)); g.stroke();
+    g.fillStyle='#8b949e';
+    if(scenario==='tmaze'){g.fillText('+1',20,y2(1)+4);g.fillText('0',26,y2(0)+4);g.fillText('-1',20,y2(-1)+4);}
+    else{g.fillText('1',26,y2(1)+4);g.fillText('0',26,y2(0)+4);}
+    g.strokeStyle='#58a6ff'; g.lineWidth=2; g.beginPath();
+    for(var p=0;p<pts.length;p++){
+      var xx=40+p/Math.max(20,pts.length)* (W-60), yy=y2(pts[p]);
+      p?g.lineTo(xx,yy):g.moveTo(xx,yy);
+    }
+    if(pts.length)g.stroke();
+    g.fillStyle='#58a6ff';
+    for(p=0;p<pts.length;p++){
+      g.beginPath(); g.arc(40+p/Math.max(20,pts.length)*(W-60), y2(pts[p]),3,0,7); g.fill();
+    }
+    g.fillStyle='#8b949e';
+    g.fillText(scenario==='tmaze'?'每试验首选择臂（上=选A/CS+）':'每试验路径直接度 (直线/实际)', 40, 16);
+  }
+}
+
+function updateStats(){
+  document.getElementById('sT').textContent=Math.round(t);
+  document.getElementById('sHead').textContent=Math.round(fly.h*180/Math.PI)+' / '+Math.round(psi*180/Math.PI);
+  document.getElementById('sErr').textContent=Math.round(angDiff(psi,fly.h)*180/Math.PI);
+  document.getElementById('sVA').textContent=(scenario==='visual')?'-':odorValue('A').toFixed(2);
+  document.getElementById('sVB').textContent=(scenario==='visual')?'-':odorValue('B').toFixed(2);
+  document.getElementById('sRW').textContent=rewards+' / '+punishments;
+  if(scenario==='tmaze'){
+    document.getElementById('sTrialK').textContent='已完成试验';
+    document.getElementById('sTrial').textContent=trialPI.length;
+    document.getElementById('sPerfK').textContent='选A正确率';
+    var cc=0; for(var q=0;q<trialPI.length;q++) if(trialPI[q]>0) cc++;
+    document.getElementById('sPerf').textContent=trialPI.length?(cc/trialPI.length).toFixed(2):'-';
+    document.getElementById('sPhase').textContent=tmPhase;
+  }else if(scenario==='visual'){
+    document.getElementById('sTrialK').textContent='已完成试验';
+    document.getElementById('sTrial').textContent=trialDir.length;
+    document.getElementById('sPerfK').textContent='平均直接度';
+    var m=0; for(var i=0;i<trialDir.length;i++)m+=trialDir[i];
+    document.getElementById('sPerf').textContent=trialDir.length?(m/trialDir.length).toFixed(2):'-';
+    document.getElementById('sPhase').textContent='导航';
+  }else{
+    document.getElementById('sTrialK').textContent='A区停留奖励';
+    document.getElementById('sTrial').textContent=rewards;
+    document.getElementById('sPerfK').textContent='B区误入';
+    document.getElementById('sPerf').textContent=punishments;
+    document.getElementById('sPhase').textContent='自由觅食';
+  }
+}
+
+// ================= 主循环 / 交互 =================
+var paused=false;
+function frame(){
+  if(!paused){
+    var sp=+document.getElementById('speed').value;
+    for(var s=0;s<sp;s++) step();
+  }
+  drawArena(); drawCX(); drawBars(); drawLearn(); updateStats();
+  requestAnimationFrame(frame);
+}
+function setScenario(sc){
+  scenario=sc; initWeights(); resetEnv(); t=0;
+  document.getElementById('scForage').className=(sc==='forage')?'on':'';
+  document.getElementById('scTmaze').className=(sc==='tmaze')?'on':'';
+  document.getElementById('scVisual').className=(sc==='visual')?'on':'';
+  document.getElementById('arenaCap').textContent=
+    sc==='forage'?'觅食场：橙圈=气味A源(伴糖奖励)，紫圈=气味B源(伴苦味惩罚)；淡线=轨迹。':
+    sc==='tmaze'?'T迷宫：训练期单气味全场( A+糖 / B无 )，测试期两臂梯度；统计选臂偏好 PI。':
+    '视觉导航：条纹信标=目标区；果蝇靠中央复合体航向表征走向信标，到达记一次试验并随机重启。';
+  document.getElementById('learnCap').textContent=
+    sc==='forage'?'觅食：气味A/B 的学习价值随时间变化（糖奖励抬升A、苦味压低B）。':
+    sc==='tmaze'?'条件化：每点=该试验测试期首选择臂（上=选与糖配对的A）；训练前基线随机上下，训练后应全在上。':
+    '导航：每试验路径直接度（起点→目标直线 / 实际路径），越接近1越高效。';
+}
+document.getElementById('scForage').addEventListener('click',function(){setScenario('forage');});
+document.getElementById('scTmaze').addEventListener('click',function(){setScenario('tmaze');});
+document.getElementById('scVisual').addEventListener('click',function(){setScenario('visual');});
+document.getElementById('btnPause').addEventListener('click',function(){paused=!paused;this.textContent=paused?'继续':'暂停';});
+document.getElementById('btnReset').addEventListener('click',function(){initWeights();resetEnv();t=0;});
+[['eta',2],['noise',2],['speed',0]].forEach(function(p){
+  var el=document.getElementById(p[0]);
+  el.addEventListener('input',function(){
+    document.getElementById(p[0]+'V').textContent=(+el.value).toFixed(p[1]);
+    if(p[0]==='eta')eta=+el.value;
+    if(p[0]==='noise')noiseAmp=+el.value;
+  });
+});
+aCv.addEventListener('click',function(e){
+  var r=aCv.getBoundingClientRect();
+  fly.x=(e.clientX-r.left)*(AW/r.width); fly.y=(e.clientY-r.top)*(AH/r.height);
+  startPt={x:fly.x,y:fly.y}; pathLen=0;
+});
+
+initWeights(); resetEnv();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

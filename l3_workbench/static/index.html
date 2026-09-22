@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlyConnectome · L3 仿真工作台</title>
+  <link rel="stylesheet" href="/style.css"><script src="/sync.js" defer></script><script src="/app.js" defer></script>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 9v22M20 16L8 9M20 19L5 20M20 25L9 34M20 16L32 9M20 19L35 20M20 25L31 34"/><ellipse cx="20" cy="22" rx="4" ry="9"/><circle cx="20" cy="8" r="4"/></svg><div><strong>FlyConnectome</strong><span>具身行为实验室</span></div></div>
+  <div class="header-title">L3 仿真工作台 <span class="version">本地实验</span></div>
+  <a href="/learning.html" class="download">图片奖励学习</a>
+  <a href="/pond.html" class="download">池塘 3D 场景</a>
+  <button id="help" class="quiet">使用说明 <span>?</span></button>
+</header>
+<div class="toolbar">
+  <div class="status-wrap"><i id="statusDot"></i><strong id="status">连接中</strong><span id="statusMessage">正在连接本地仿真服务</span></div>
+  <div class="actions"><button id="reset">重置场景</button><button id="step">步进 0.1 s</button><button id="pause">暂停</button><button id="start" class="primary">▶ 开始运行</button></div>
+</div>
+<main class="workbench">
+  <aside class="scene-panel">
+    <div class="panel-heading"><h2>场景与环境</h2><span class="tag">重置后生效</span></div>
+    <label class="field">实验预设<select id="preset"><option value="default">平地 · 双目标导航</option><option value="straight">平地 · 直线行走</option><option value="noisy">噪声罗盘 · 航向融合</option><option value="manual">手动探索</option></select></label>
+    <p id="sceneDirty" class="draft-note" hidden>场景有修改，重置后应用</p>
+    <div class="two-fields"><label class="field">出生 x / mm<input id="spawnX" type="number" min="-60" max="60" step="1" value="0"></label><label class="field">出生 y / mm<input id="spawnY" type="number" min="-60" max="60" step="1" value="0"></label></div>
+    <label class="field">初始朝向 <span><output id="spawnAngleOut">0</output>°</span><input id="spawnAngle" type="range" min="-180" max="180" value="0"></label>
+    <label class="field">地面摩擦系数 <output id="frictionOut">1.00</output><input id="friction" type="range" min="0.1" max="3" step="0.05" value="1"></label>
+    <label class="field">足底粘附强度 <output id="adhesionOut">40</output><input id="adhesion" type="range" min="0" max="80" step="1" value="40"></label>
+    <div class="two-fields"><label class="field">实验时长 / s<input id="duration" type="number" min="0.1" max="60" step="0.1" value="10"></label><label class="field">随机种子<input id="seed" type="number" min="0" max="2147483647" step="1" value="0"></label></div>
+    <div class="section-heading"><h3>目标地图</h3><span class="live-label">即时生效</span></div>
+    <div class="map-wrap"><canvas id="map" width="480" height="420" aria-label="目标点地图，可拖动目标点调整位置"></canvas></div>
+    <p class="hint">拖动目标点调整位置；点击空白处添加。单位 mm。</p>
+    <div id="targets" class="targets"></div>
+    <button id="addTarget" class="wide dashed">＋ 添加目标点</button>
+    <div class="config-actions"><button id="saveConfig">保存配置</button><button id="loadConfig">导入配置</button><input id="configFile" type="file" accept=".json,application/json" hidden></div>
+  </aside>
+
+  <section class="observation">
+    <div class="panel-heading"><div><h1>观察果蝇的下一步</h1><p>感觉、航向估计与六足运动的闭环</p></div><span class="engine-badge">MuJoCo 物理仿真</span></div>
+    <div class="viewport">
+      <img id="frame" alt="当前实验的果蝇三维仿真画面" hidden>
+      <div id="emptyFrame" class="empty-frame"><div class="orbit"><span>⌁</span></div><strong>等待仿真画面</strong><p>初始化会构建身体并标定转向响应。<br>首次启动可能需要几十秒。</p></div>
+      <div class="viewport-top"><span id="cameraLabel">跟随视角</span><span id="frameTime">t = 0.00 s</span></div>
+      <div class="view-switch" aria-label="相机视角"><button data-view="follow" class="selected">跟随</button><button data-view="top">俯视</button><button data-view="side">侧视</button></div>
+      <div class="viewport-bottom"><span id="runLabel">尚未开始实验</span><span>画面来自当前物理状态</span></div>
+    </div>
+    <div class="metrics"><div><span>仿真时间</span><strong id="timeValue">—<small>s</small></strong></div><div><span>行走速度</span><strong id="speedValue">—<small>mm/s</small></strong></div><div><span>当前目标距离</span><strong id="distanceValue">—<small>mm</small></strong></div><div><span>航向误差</span><strong id="errorValue">—<small>°</small></strong></div></div>
+    <section class="plot-section"><div class="section-heading"><h2>航向反馈</h2><div class="legend"><span class="truth">真实航向</span><span class="estimate">内部估计</span><span class="goal">目标航向</span></div></div><canvas id="headingChart" width="1000" height="240" aria-label="真实航向、内部估计和目标航向随时间变化"></canvas><div class="plot-footer"><span>角度范围 −180° 至 180°；浅红区间表示罗盘遮挡</span><span id="rmse">RMSE —</span></div></section>
+    <section class="plot-section"><div class="section-heading"><h2>左右运动信号</h2><div class="legend"><span class="estimate">左侧</span><span class="goal">右侧</span></div></div><canvas id="signalChart" width="1000" height="160" aria-label="左右下行运动信号"></canvas></section>
+    <div class="experiment-footer"><span id="performance">运行速度将在实验开始后显示</span><button id="export">导出本次实验</button><a id="download" class="download" hidden>下载结果包</a></div>
+  </section>
+
+  <aside class="control-panel">
+    <div class="panel-heading"><h2>行为控制</h2><span class="live-label">即时生效</span></div>
+    <div class="segmented"><button data-mode="auto" class="selected">自主导航</button><button data-mode="manual">手动控制</button></div>
+    <p id="modeHint" class="hint">根据内部航向估计，依次前往目标点。</p>
+    <div id="autoControls"><label class="field">行走强度 <output id="baseOut">1.00</output><input id="base" type="range" min="0" max="1.5" step="0.05" value="1"></label><label class="field">转向增益 <output id="gainOut">2.20</output><input id="gain" type="range" min="0" max="5" step="0.1" value="2.2"></label></div>
+    <div id="manualControls" hidden><label class="field">左侧信号 <output id="leftOut">0.00</output><input id="left" type="range" min="-1.5" max="1.5" step="0.05" value="0"></label><label class="field">右侧信号 <output id="rightOut">0.00</output><input id="right" type="range" min="-1.5" max="1.5" step="0.05" value="0"></label><div class="manual-buttons"><button data-drive="forward">前进</button><button data-drive="left">左转</button><button data-drive="right">右转</button><button data-drive="stop">归零</button></div><p class="hint">正值向前，负值向后。暂停会冻结整个仿真。</p></div>
+    <div class="section-heading"><h3>感觉干预</h3></div>
+    <label class="field">罗盘噪声 / rad <output id="noiseOut">0.10</output><input id="noise" type="range" min="0" max="1" step="0.01" value="0.1"></label>
+    <label class="switch-row"><span><strong>遮挡罗盘</strong><small id="compassHint">视觉线索可用</small></span><input id="occluded" type="checkbox" role="switch" aria-label="遮挡罗盘"></label>
+    <p class="hint">遮挡后仅靠自运动积分。这里的罗盘是模拟测量，不读取复眼图像。</p>
+    <div class="section-heading"><h3>内部航向活动</h3><span>16 单元</span></div>
+    <canvas id="ring" width="440" height="300" aria-label="中央复合体环形网络的活动分布"></canvas>
+    <div class="ring-caption"><span>活动亮区对应估计航向</span><strong id="psiValue">—°</strong></div>
+    <div class="section-heading"><h3>六腿状态</h3></div>
+    <div id="legs" class="legs"></div>
+    <div class="leg-legend"><span>● 实际触地</span><span>环：粘附开启</span><span>条：步态相位</span></div>
+    <div class="feedback-note" id="feedback">初始化后显示真实反馈</div>
+  </aside>
+</main>
+<div id="toast" role="status" hidden></div>
+<dialog id="helpDialog"><div class="dialog-heading"><h2>开始一次 L3 实验</h2><button id="closeHelp" aria-label="关闭说明">×</button></div><ol><li>选择场景，设置出生位置、摩擦和粘附强度，点击「重置场景」。</li><li>在地图上拖动目标点，点击「开始运行」。可随时暂停或步进 0.1 秒。</li><li>切换手动控制、调整罗盘噪声或遮挡罗盘，观察航向与轨迹变化。</li><li>暂停后导出实验，结果包包含视频、CSV、参数和干预时间记录。</li></ol><p>物理计算可能慢于真实时间。页面显示仿真时间与计算速度，视频按仿真时间播放。目标距离和真实航向来自仿真状态，航向估计来自 CX 网络。</p><p>第一版支持平地。坡面、障碍、风和气味尚未建模。地面摩擦和粘附改变后可能影响行走稳定性；标定失败时请恢复默认场景。</p><p>同一服务的多个页面共享一个实验。重置会建立新实验目录，旧数据仍保留在 outputs/l3-workbench。</p></dialog>
+</body>
+</html>

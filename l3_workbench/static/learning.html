@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>图片奖励学习 · FlyConnectome</title>
+  <link rel="stylesheet" href="/learning.css">
+  <script defer src="/learning-core.js"></script><script defer src="/learning.js"></script>
+</head>
+<body>
+<header><a class="brand" href="/">FlyConnectome <span>具身行为实验室</span></a><nav aria-label="实验场景"><a href="/">L3 导航</a><a href="/learning.html" aria-current="page">图片奖励学习</a><a href="/pond.html">池塘 3D 场景</a></nav></header>
+<main>
+  <div class="intro"><div><p class="eyebrow">可学习的视觉决策实验</p><h1>从一次奖励，学会下一次选择。</h1><p>看图片，选图形。观察奖励怎样改变选择，再让果蝇走出这个决定。</p></div><span class="model-tag">简化学习模型</span></div>
+  <div class="experiment-grid">
+    <section class="trial-panel" aria-labelledby="trialHeading">
+      <div class="section-top"><h2 id="trialHeading">图片与选择</h2><span id="trialLabel">训练前预览</span></div>
+      <div class="stimulus"><canvas id="stimulus" width="320" height="320" aria-label="当前输入的图形图片"></canvas><span>当前输入图片 · 32 × 32 像素</span></div>
+      <div class="choices" id="choices">
+        <div class="choice" id="choice0"><div><span id="symbol0" class="shape"></span><strong id="name0"></strong><span id="chosen0" class="choice-badge"></span></div><meter id="prob0" min="0" max="1" value=".5"></meter><p id="probText0"></p></div>
+        <div class="choice" id="choice1"><div><span id="symbol1" class="shape"></span><strong id="name1"></strong><span id="chosen1" class="choice-badge"></span></div><meter id="prob1" min="0" max="1" value=".5"></meter><p id="probText1"></p></div>
+      </div>
+      <div id="reward" class="reward" role="status">点击「训练 1 轮」，查看一次完整反馈。</div>
+      <p class="caption">两类图片轮流出现；大小、位置、颜色和选项左右位置会变化。训练允许探索，测试与演示选择概率较高的一项。</p>
+    </section>
+    <aside class="training-panel">
+      <div class="section-top"><h2>训练控制</h2><span id="trainingStatus">尚未训练</span></div>
+      <label for="seed">随机种子 <small>相同种子可重复实验</small></label>
+      <div class="seed-row"><input id="seed" type="number" min="0" max="2147483647" step="1" value="0"><button id="resetLearning">重新开始</button></div>
+      <div class="training-buttons"><button id="one">训练 1 轮</button><button id="hundred">训练 100 轮</button><button id="sixHundred" class="primary">连续训练 600 轮</button><button id="stop" disabled>停止训练</button></div>
+      <p class="caption">选对 +1，选错 0。快速训练不运行物理仿真；每轮奖励实际更新选择策略。</p>
+      <div class="training-stats"><div><span>已训练</span><strong id="rounds">0<small>轮</small></strong></div><div><span>累计奖励</span><strong id="totalReward">0</strong></div><div><span>最近 50 轮正确率</span><strong id="recent">—</strong></div></div>
+      <div class="test-box"><div class="section-top"><h3>独立测试</h3><span>冻结学习参数</span></div><div class="test-score"><strong id="testScore">—</strong><p id="testDetail">用 200 张留出图片检验识别效果。</p></div><button id="evaluate" class="full">测试 200 张留出图片</button><p class="caption">同一种子重复测试使用同一组留出图片，方便前后比较。成绩仅代表这类生成图形。</p></div>
+      <div class="export-row"><button id="exportJSON">导出完整记录</button><button id="exportCSV">导出训练 CSV</button></div>
+      <p id="exportResult" class="caption" role="status" hidden><span id="exportMessage"></span> <a id="exportLink">下载记录</a></p>
+      <p class="caption">数据保留在当前页面；刷新或重新开始会清空。先导出再离开，训练上限为 10000 轮。</p>
+    </aside>
+  </div>
+  <section class="curve-section"><div class="section-top"><div><h2>学习有没有发生？</h2><p class="caption">蓝线为最近最多 50 轮的训练正确率，绿点为冻结参数的独立测试成绩。</p></div><div class="legend"><span>训练正确率</span><span>独立测试</span></div></div><canvas id="learningCurve" width="1100" height="250" aria-label="随训练轮数变化的训练正确率和独立测试成绩"></canvas><p id="curveSummary" class="caption">训练前的独立测试将作为对照，结果不会预设。</p></section>
+  <section class="embodied-section" aria-labelledby="embodiedHeading">
+    <div class="section-top"><div><h2 id="embodiedHeading">让果蝇走出它的选择</h2><p class="caption">冻结当前策略，生成一张新图片，由真实 L3 控制器走向所选区域。此处不训练。</p></div><a href="/" target="_blank" rel="noopener">打开完整 L3 工作台</a></div>
+    <div class="embodied-grid"><div class="physics-image"><img id="physicsFrame" alt="当前果蝇的真实 L3 物理仿真画面" hidden><p id="physicsEmpty">点击「新建 L3 演示」连接物理仿真。</p><span id="physicsTime">尚未运行</span></div><div class="embodied-control">
+      <canvas id="arena" width="400" height="230" aria-label="果蝇当前位置与两个选项区域"></canvas>
+      <p id="demoStatus" role="status">训练前后都可以演示，对比它作出的选择。</p>
+      <div class="demo-actions"><button id="demo" class="primary">新建 L3 演示</button><button id="pauseDemo" disabled>暂停</button><button id="resumeDemo" disabled>继续</button><button id="endDemo" disabled>结束演示</button></div>
+      <p class="caption">新建演示会重置同一本机服务中的 L3 实验。仿真时限 10 秒，实际计算可能需几分钟。识别是否正确与身体是否到达分别记录；暂停期间可继续或新建。</p>
+    </div></div>
+  </section>
+  <section class="records-section"><div class="section-top"><h2>逐轮实验记录</h2><span>最近 12 轮 · 完整记录可导出</span></div><div class="table-scroll"><table><thead><tr><th>轮次</th><th>图片类别</th><th>所选图形</th><th>选择时概率</th><th>奖励</th></tr></thead><tbody id="records"><tr><td colspan="5">还没有训练记录。</td></tr></tbody></table></div></section>
+  <details><summary>这个实验能说明什么？</summary><p>学习模块从图片像素提取形状特征，使用选中动作的标量奖励更新二选一策略。答案只用于判定奖励，不会作为决策输入。图像预处理会去除位置、尺度和颜色差异，因此这是一项较简单、反馈明确的形状区分任务。</p><p>它是新增的简化视觉决策模块，不是对真实果蝇连接组可塑性的复现，也不读取复眼图像。L3 保留真实身体运动；图片识别和行走成功分开评价。当前只支持自动生成的圆形和三角形，不支持任意照片或数字识别。</p><p>训练：两动作策略梯度，学习率 0.12，奖励基线 0.5。测试：独立随机流，200 张图片，100 张圆形、100 张三角形，不更新模型。导出包含权重、随机状态、逐轮记录、测试混淆矩阵和 L3 演示记录。</p></details>
+  <p id="notice" role="alert" hidden></p>
+</main>
+</body>
+</html>

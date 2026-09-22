@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlyConnectome · 池塘 3D 场景</title>
+  <link rel="stylesheet" href="/pond.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 9v22M20 16L8 9M20 19L5 20M20 25L9 34M20 16L32 9M20 19L35 20M20 25L31 34"/><ellipse cx="20" cy="22" rx="4" ry="9"/><circle cx="20" cy="8" r="4"/></svg>
+    <div><strong>FlyConnectome</strong><span>具身行为实验室</span></div>
+  </div>
+  <div class="header-title">池塘 3D 场景 <span class="version">青蛙 × 果蝇</span></div>
+  <a href="/" class="download">返回工作台</a>
+  <a href="/learning.html" class="download quiet">图片奖励学习</a>
+  <button id="reset" class="primary">重置场景</button>
+</header>
+
+<canvas id="scene"></canvas>
+
+<aside class="params" id="params">
+  <div class="params-head">
+    <h2>参数面板</h2>
+    <button id="collapse" class="quiet" aria-label="折叠面板">◀</button>
+  </div>
+
+  <section>
+    <h3>物理</h3>
+    <label>重力 <output id="o-gravity">9.8</output>
+      <input id="gravity" type="range" min="0" max="20" step="0.1" value="9.8">
+    </label>
+    <label>风速 X <output id="o-windX">0.0</output>
+      <input id="windX" type="range" min="-5" max="5" step="0.1" value="0">
+    </label>
+    <label>风速 Y <output id="o-windY">0.0</output>
+      <input id="windY" type="range" min="-5" max="5" step="0.1" value="0">
+    </label>
+    <label>风速 Z <output id="o-windZ">0.0</output>
+      <input id="windZ" type="range" min="-5" max="5" step="0.1" value="0">
+    </label>
+  </section>
+
+  <section>
+    <h3>青蛙</h3>
+    <label>反应延迟 (s) <output id="o-reaction">0.30</output>
+      <input id="reaction" type="range" min="0.05" max="2" step="0.05" value="0.3">
+    </label>
+    <label>舌头速度 <output id="o-tongueSpeed">8.0</output>
+      <input id="tongueSpeed" type="range" min="1" max="25" step="0.5" value="8">
+    </label>
+    <label>舌头射程 <output id="o-tongueRange">3.0</output>
+      <input id="tongueRange" type="range" min="0.5" max="6" step="0.1" value="3">
+    </label>
+    <label>饥饿周期 (s) <output id="o-hunger">6.0</output>
+      <input id="hunger" type="range" min="1" max="20" step="0.5" value="6">
+    </label>
+    <label>捕猎视野 (单位) <output id="o-frogView">5.0</output>
+      <input id="frogView" type="range" min="1" max="10" step="0.5" value="5">
+    </label>
+  </section>
+
+  <section>
+    <h3>果蝇</h3>
+    <label>数量 <output id="o-flyCount">6</output>
+      <input id="flyCount" type="range" min="1" max="20" step="1" value="6">
+    </label>
+    <label>漫游速度 <output id="o-wanderSpeed">1.2</output>
+      <input id="wanderSpeed" type="range" min="0.1" max="4" step="0.1" value="1.2">
+    </label>
+    <label>逃逸触发概率 <output id="o-escapeProb">0.85</output>
+      <input id="escapeProb" type="range" min="0" max="1" step="0.05" value="0.85">
+    </label>
+    <label>逃逸爆发力 <output id="o-escapeForce">6.0</output>
+      <input id="escapeForce" type="range" min="0" max="15" step="0.5" value="6">
+    </label>
+    <label>抗噪半径 <output id="o-escapeRadius">0.7</output>
+      <input id="escapeRadius" type="range" min="0.1" max="3" step="0.05" value="0.7">
+    </label>
+  </section>
+
+  <section>
+    <h3>环境事件</h3>
+    <label>气味强度 <output id="o-odorStrength">0.85</output>
+      <input id="odorStrength" type="range" min="0" max="1" step="0.05" value="0.85">
+    </label>
+    <label>气味半径 <output id="o-odorRadius">8.5</output>
+      <input id="odorRadius" type="range" min="1" max="14" step="0.5" value="8.5">
+    </label>
+    <div class="event-btns">
+      <button id="evt-leaf" title="向全场广播一次 subthreshold 扰动">扔落叶 (无害扰动)</button>
+      <button id="evt-fruit-near" title="把气味源射到青蛙旁边，测试趋化 vs 危险冲突">水果→青蛙旁</button>
+      <button id="evt-fruit-home" title="射回岸边">水果→岸边</button>
+    </div>
+  </section>
+
+  <section>
+    <h3>神经元消融</h3>
+    <div class="switches">
+      <label class="sw"><input type="checkbox" id="enable_or" checked><span>OR 通道</span></label>
+      <label class="sw"><input type="checkbox" id="enable_adapt" checked><span>ORN 适应</span></label>
+      <label class="sw"><input type="checkbox" id="enable_ln" checked><span>LN 侧抑制</span></label>
+      <label class="sw"><input type="checkbox" id="enable_gf" checked><span>GF LIF</span></label>
+      <label class="sw"><input type="checkbox" id="enable_plasticity" checked><span>致敏/习惯化</span></label>
+      <label class="sw"><input type="checkbox" id="enable_odor_plume" checked><span>气味羽流</span></label>
+      <label class="sw"><input type="checkbox" id="enable_habit_events" checked><span>自动无害扰动</span></label>
+    </div>
+    <details class="neuron-detail">
+      <summary>嗅觉参数</summary>
+      <label>g_orn <output id="o-g_orn">3.00</output>
+        <input id="g_orn" type="range" min="0.5" max="8" step="0.1" value="3">
+      </label>
+      <label>τ_adapt (s) <output id="o-tau_adapt">2.00</output>
+        <input id="tau_adapt" type="range" min="0.2" max="6" step="0.1" value="2">
+      </label>
+      <label>g_ln <output id="o-g_ln">0.55</output>
+        <input id="g_ln" type="range" min="0" max="1.5" step="0.05" value="0.55">
+      </label>
+      <label>KC 阈值 <output id="o-kc_theta">0.35</output>
+        <input id="kc_theta" type="range" min="0.1" max="2" step="0.05" value="0.35">
+      </label>
+      <label>趋化拉力 k_odor <output id="o-k_odor">8.00</output>
+        <input id="k_odor" type="range" min="0" max="15" step="0.1" value="8">
+      </label>
+    </details>
+    <details class="neuron-detail">
+      <summary>GF 参数</summary>
+      <label>θ_base <output id="o-theta_base">1.00</output>
+        <input id="theta_base" type="range" min="0.2" max="3" step="0.05" value="1">
+      </label>
+      <label>τ (s) <output id="o-gf_tau">0.060</output>
+        <input id="gf_tau" type="range" min="0.02" max="0.3" step="0.005" value="0.06">
+      </label>
+      <label>g_tongue <output id="o-g_tongue">3.20</output>
+        <input id="g_tongue" type="range" min="0" max="10" step="0.1" value="3.2">
+      </label>
+      <label>致敏强度 s_gain <output id="o-s_gain">0.50</output>
+        <input id="s_gain" type="range" min="0" max="0.9" step="0.05" value="0.5">
+      </label>
+      <label>习惯化 h_gain <output id="o-h_gain">0.55</output>
+        <input id="h_gain" type="range" min="0" max="1.5" step="0.05" value="0.55">
+      </label>
+    </details>
+  </section>
+
+  <section>
+    <h3>视角</h3>
+    <div class="cam-btns" role="tablist">
+      <button data-cam="orbit" class="cam-btn selected">环绕</button>
+      <button data-cam="top" class="cam-btn">俯视</button>
+      <button data-cam="side" class="cam-btn">侧视</button>
+      <button data-cam="frog" class="cam-btn">青蛙视角</button>
+    </div>
+  </section>
+</aside>
+
+<footer class="status-bar">
+  <span id="caught">已捕获 0</span>
+  <span id="alive">存活 0</span>
+  <span id="drowned">落水 0</span>
+  <span id="fps">FPS --</span>
+  <span id="inspect-hint" class="hint">左键点果蝇 = 逃逸+开启检视器·点水面 = 涟漪·拖拽 = 旋转</span>
+</footer>
+
+<div id="toast" hidden></div>
+
+<script type="module" src="/pond.js"></script>
+</body>
+</html>

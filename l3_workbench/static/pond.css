@@ -1,0 +1,100 @@
+:root{--paper:#f4f7fa;--white:#fff;--ink:#24354b;--muted:#718097;--line:#e2e8ef;--blue:#247ea3;--orange:#db8550;--navy:#20354e;--red:#c66568;--radius:10px}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#0d1a26;color:var(--ink);font:13px/1.6 "PingFang SC","Hiragino Sans GB",-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;display:flex;flex-direction:column}
+button,a,input,select{-webkit-tap-highlight-color:transparent}
+button{cursor:pointer;background:white;border:1px solid var(--line);border-radius:6px;padding:7px 13px;color:var(--ink);transition:background .15s,border-color .15s}
+button:hover:not(:disabled){background:#eaf2f7;border-color:#b3c6d3}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #8ac0d8;outline-offset:2px}
+button.primary{background:var(--navy);color:white;border-color:var(--navy);padding-inline:20px}
+button.primary:hover:not(:disabled){background:#355677}
+button.quiet{background:transparent;border:0}
+
+.app-header{height:72px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:white;border-bottom:1px solid var(--line);flex-shrink:0;z-index:5}
+.brand{display:flex;gap:12px;align-items:center}
+.brand svg{width:36px;height:36px;stroke:var(--blue);stroke-width:1.8;fill:none}
+.brand strong{display:block;font-size:19px;font-weight:650;letter-spacing:-.5px}
+.brand span{display:block;color:var(--muted);font-size:11px;letter-spacing:2px}
+.header-title{font-size:15px;font-weight:500;flex:1}
+.version{font-size:11px;color:var(--blue);margin-left:10px;background:#eaf3f7;padding:4px 9px;border-radius:4px;font-weight:400}
+.download{color:var(--blue);font-weight:600;text-decoration:none;padding:6px 10px;border-radius:5px;font-size:12px}
+.download:hover{background:#eaf2f7}
+.download.quiet{color:var(--muted);font-weight:400}
+
+#scene{flex:1;display:block;width:100%;outline:none;cursor:crosshair;touch-action:none}
+
+.params{position:fixed;top:88px;right:22px;width:280px;max-height:calc(100vh - 160px);overflow-y:auto;background:#ffffffea;backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px 18px;box-shadow:0 8px 30px #20354e18;font-size:12px;z-index:4;transition:transform .25s ease,opacity .25s}
+.params.collapsed{transform:translateX(calc(100% + 30px));opacity:0;pointer-events:none}
+.params-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.params-head h2{margin:0;font-size:14px;font-weight:650}
+.params section{margin:14px 0 4px;padding-top:10px;border-top:1px dashed #d5dee7}
+.params section:first-of-type{border-top:0;padding-top:0}
+.params h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--blue);letter-spacing:.5px}
+.params label{display:block;color:#536277;font-size:11px;margin:8px 0 4px}
+.params output{float:right;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:500}
+.params input[type=range]{display:block;width:100%;height:16px;margin:2px 0 4px;accent-color:var(--blue);cursor:pointer}
+.cam-btns{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}
+.cam-btn{font-size:11px;padding:5px 6px;background:#f5f7fa;border:1px solid var(--line);color:#5b6d84}
+.cam-btn.selected{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+.event-btns{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.event-btns button{font-size:11px;padding:5px 9px;background:#f5f7fa;border:1px solid var(--line);color:#3b5570;border-radius:5px}
+.event-btns button:hover{background:#eaf2f7;border-color:#b3c6d3}
+
+.switches{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:2px}
+.sw{display:flex;align-items:center;gap:5px;font-size:11px;color:#536277;cursor:pointer;user-select:none;margin:0}
+.sw input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:12px;background:#d7dfe8;border-radius:10px;position:relative;cursor:pointer;transition:background .15s;flex-shrink:0;margin:0}
+.sw input[type=checkbox]::after{content:'';position:absolute;top:1px;left:1px;width:10px;height:10px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px #20354e33}
+.sw input[type=checkbox]:checked{background:var(--blue)}
+.sw input[type=checkbox]:checked::after{transform:translateX(10px)}
+.sw span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.neuron-detail{margin-top:8px;border-top:1px dashed #d5dee7;padding-top:6px}
+.neuron-detail summary{cursor:pointer;font-size:11px;color:var(--muted);padding:2px 0;user-select:none;list-style:none}
+.neuron-detail summary::-webkit-details-marker{display:none}
+.neuron-detail summary::before{content:'▸ ';color:var(--muted);display:inline-block;transition:transform .15s}
+.neuron-detail[open] summary::before{content:'▾ '}
+.neuron-detail label{display:block;color:#536277;font-size:11px;margin:6px 0 3px}
+.neuron-detail output{float:right;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:500}
+.neuron-detail input[type=range]{display:block;width:100%;height:14px;margin:2px 0 3px;accent-color:var(--blue);cursor:pointer}
+
+/* ---- 神经元检视器 ---- */
+#inspector{position:fixed;left:22px;bottom:44px;width:min(660px,calc(100vw - 44px));background:#ffffffea;backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px #20354e30;z-index:5;overflow:hidden;font-size:12px}
+#inspector header{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line);background:#f7fafc}
+#inspector .ins-title{font-weight:600;color:var(--ink);font-size:13px}
+#inspector .ins-title b{color:var(--blue);margin-left:2px}
+#inspector .ins-tools button{font-size:11px;padding:3px 8px;margin-left:6px}
+#inspector .ins-body{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;padding:10px 14px 14px}
+#inspector .ins-col{display:flex;flex-direction:column;gap:4px;min-width:0}
+#inspector .ins-cap{font-size:10px;color:var(--muted);letter-spacing:.4px}
+#inspector canvas{display:block;width:100%;height:120px;background:#fafcfd;border:1px solid #e6ecf1;border-radius:6px}
+#inspector .ins-numbers{display:flex;flex-direction:column;gap:2px;min-width:130px;font-size:11px;font-variant-numeric:tabular-nums}
+#inspector .num-row{display:flex;justify-content:space-between;gap:8px;padding:1px 0;color:#536277}
+#inspector .num-row .k{color:var(--muted)}
+#inspector .num-row .v{color:var(--ink);font-weight:500}
+
+.status-bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:22px;align-items:center;padding:10px 26px;background:#ffffffd9;backdrop-filter:blur(6px);border-top:1px solid var(--line);font-size:12px;z-index:4}
+.status-bar span{color:var(--muted);font-variant-numeric:tabular-nums}
+.status-bar #caught{color:var(--orange);font-weight:600}
+.status-bar #alive{color:var(--blue);font-weight:600}
+.status-bar #drowned{color:#6c8cae;font-weight:500}
+.status-bar #fps{color:#4d7a4c;font-weight:500}
+.status-bar .hint{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50vw}
+
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);max-width:90vw;background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;z-index:10;box-shadow:0 4px 20px #20354e30;font-size:12px}
+#toast.error{background:#994950}
+[hidden]{display:none!important}
+
+@media(max-width:820px){
+  .app-header{height:60px;padding:0 14px}
+  .brand strong{font-size:16px}
+  .brand span{display:none}
+  .brand svg{width:28px}
+  .header-title{font-size:13px}
+  .version{display:none}
+  .download.quiet{display:none}
+  .params{top:66px;right:12px;width:230px;padding:10px 12px 14px;font-size:11px}
+  .status-bar{gap:12px;padding:8px 14px;font-size:11px}
+  .status-bar .hint{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
