@@ -4,5 +4,9 @@
 .conda-pkgs/
 __pycache__/
 *.pyc
+*.egg-info/
 outputs/
 .DS_Store
+.idea/
+.vscode/
+*.swp

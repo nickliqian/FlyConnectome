@@ -3,12 +3,14 @@
 The reference locomotion stack (vendored in nmf_ctrl/): a 6-oscillator tripod
 CPG drives preprogrammed single-leg step trajectories extracted from real
 tethered-walking recordings; adhesion actuators gate foot grip per swing/stance
-phase. Run:  MUJOCO_GL=glfw ./.venv-l3/bin/python l3_walk.py
+phase. Run:  MUJOCO_GL=glfw ./.venv-l3/bin/python scripts/l3_walk.py
 Output:     l3_walk_side.mp4
 """
 import os
-os.environ.setdefault("MUJOCO_GL", "glfw")
+import sys
 from pathlib import Path
+os.environ.setdefault("MUJOCO_GL", "glfw")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import mujoco as mj
@@ -18,7 +20,7 @@ from flygym.compose import FlatGroundWorld, ActuatorType
 from flygym.utils.math import Rotation3D
 from nmf_ctrl import make_locomotion_fly, TurningCPGController
 
-OUT = Path(__file__).resolve().parent
+OUT = Path(__file__).resolve().parent.parent
 
 fly = make_locomotion_fly(name="cpg", add_adhesion=True, colorize=True)
 cam = fly.add_tracking_camera(name="body_cam", pos_offset=(-0.5, -7.5, 0.0),

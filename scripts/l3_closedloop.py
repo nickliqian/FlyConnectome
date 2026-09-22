@@ -17,7 +17,10 @@ real body in MuJoCo):
 Outputs: l3_steer_top.mp4 (top view), l3_traj.png (trajectory + internal signals).
 """
 import os
+import sys
+from pathlib import Path
 os.environ.setdefault("MUJOCO_GL", "glfw")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np, mujoco as mj, flygym, imageio.v2 as imageio
 import matplotlib
 matplotlib.use("Agg")
@@ -30,7 +33,7 @@ from nmf_ctrl import make_locomotion_fly, TurningCPGController, RingAttractor
 plt.rcParams["font.sans-serif"] = ["Hiragino Sans GB", "Arial Unicode MS", "STHeiti"]
 plt.rcParams["axes.unicode_minus"] = False
 
-OUT = "/Users/nick/Desktop/workProject/FlyConnectome"
+OUT = str(Path(__file__).resolve().parent.parent)
 WRAP = lambda a: (a + np.pi) % (2 * np.pi) - np.pi
 
 
